@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Home</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="home">
+        <h1>Welcome to the Game Portal</h1>
+        <div id="games-list">
+            <!-- Game links will be dynamically added here -->
+        </div>
+        <nav>
+            <ul id="pagination">
+                <!-- Pagination buttons will be dynamically added here -->
+            </ul>
+        </nav>
+    </div>
+
+    <div id="game-container" style="display:none;">
+        <!-- This will hold the game iframe or embed -->
+        <button id="back-button" onclick="goBack()">Back to Home</button>
+        <iframe id="game-frame" style="width: 100%; height: 90vh;"></iframe>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
