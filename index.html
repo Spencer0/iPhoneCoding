@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Paper Mario Jump</title>
+    <style>
+        body { margin: 0; touch-action: none; }
+        canvas { display: block; }
+        #score {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            z-index: 100;
+        }
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 48px;
+            display: none;
+            text-align: center;
+            z-index: 100;
+        }
+        #tapToStart {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            text-align: center;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="gameOver">
+        Game Over!<br>
+        <span style="font-size: 24px">Tap to restart</span>
+    </div>
+    <div id="tapToStart">Tap to Start</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let camera, scene, renderer, player, obstacles = [];
+        let isJumping = false;
+        let gameStarted = false;
+        let gameOver = false;
+        let score = 0;
+        let animationId;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x87CEEB); // Sky blue background
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+
+            // Stage (ground)
+            const stageGeometry = new THREE.BoxGeometry(10, 0.5, 5);
+            const stageMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+            const stage = new THREE.Mesh(stageGeometry, stageMaterial);
+            scene.add(stage);
+
+            // Player
+            const playerGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const playerMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.y = 0.5;
+            scene.add(player);
+
+            // Camera position
+            camera.position.set(0, 2, 7);
+            camera.lookAt(0, 1, 0);
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('touchstart', handleTap);
+            window.addEventListener('mousedown', handleTap);
+        }
+
+        function handleTap() {
+            if (!gameStarted) {
+                gameStarted = true;
+                document.getElementById('tapToStart').style.display = 'none';
+                animate();
+                return;
+            }
+
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+
+            if (!isJumping) {
+                jump();
+            }
+        }
+
+        function jump() {
+            isJumping = true;
+            let jumpHeight = 0;
+            let jumpUp = true;
+            
+            function animateJump() {
+                if (!isJumping) return;
+
+                if (jumpUp) {
+                    jumpHeight += 0.15;
+                    player.position.y = 0.5 + jumpHeight;
+                    
+                    if (jumpHeight >= 1.5) {
+                        jumpUp = false;
+                    }
+                } else {
+                    jumpHeight -= 0.15;
+                    player.position.y = 0.5 + jumpHeight;
+                    
+                    if (jumpHeight <= 0) {
+                        player.position.y = 0.5;
+                        isJumping = false;
+                        return;
+                    }
+                }
+                
+                requestAnimationFrame(animateJump);
+            }
+            
+            animateJump();
+        }
+
+        function createObstacle() {
+            const obstacleGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const obstacleMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+            const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+            
+            obstacle.position.set(6, 0.3, 0);
+            scene.add(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function updateObstacles() {
+            // Create new obstacle
+            if (Math.random() < 0.02) {
+                createObstacle();
+            }
+
+            // Update existing obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].position.x -= 0.1;
+
+                // Check collision
+                if (!isJumping && obstacles[i].position.x < 0.5 && obstacles[i].position.x > -0.5) {
+                    endGame();
+                }
+
+                // Remove off-screen obstacles
+                if (obstacles[i].position.x < -6) {
+                    scene.remove(obstacles[i]);
+                    obstacles.splice(i, 1);
+                    score++;
+                    document.getElementById('score').textContent = `Score: ${score}`;
+                }
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            document.getElementById('gameOver').style.display = 'block';
+            cancelAnimationFrame(animationId);
+        }
+
+        function resetGame() {
+            // Reset game state
+            gameOver = false;
+            score = 0;
+            document.getElementById('score').textContent = 'Score: 0';
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Remove all obstacles
+            obstacles.forEach(obstacle => scene.remove(obstacle));
+            obstacles = [];
+            
+            // Reset player position
+            player.position.y = 0.5;
+            isJumping = false;
+            
+            // Restart animation
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            if (!gameOver) {
+                animationId = requestAnimationFrame(animate);
+                updateObstacles();
+                renderer.render(scene, camera);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
