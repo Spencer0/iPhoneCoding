@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Race Car</title>
+  <title>Race Car Game</title>
   <style>
     body, html { margin: 0; height: 100%; overflow: hidden; }
     canvas { display: block; }
@@ -17,23 +17,44 @@
     const renderer = new THREE.WebGLRenderer({ canvas });
     const width = window.innerWidth, height = window.innerHeight;
     renderer.setSize(width, height);
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.z = 5;
+    camera.position.set(0, 2, 10);
+    camera.lookAt(0, 1, 0);
 
-    const carGeometry = new THREE.BoxGeometry(1, 0.5, 0.5);
-    const carMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const roadMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+    const roadGeometry = new THREE.PlaneGeometry(10, 50);
+    const road = new THREE.Mesh(roadGeometry, roadMaterial);
+    road.rotation.x = -Math.PI / 2;
+    scene.add(road);
+
+    const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
+    const carMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
     const car = new THREE.Mesh(carGeometry, carMaterial);
     scene.add(car);
+    
+    car.position.y = 0.25;
+
+    const finishLine = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 0.2),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    );
+    finishLine.position.z = -50;
+    scene.add(finishLine);
+
+    const light = new THREE.PointLight(0xffffff, 1, 100);
+    light.position.set(0, 10, 10);
+    scene.add(light);
 
     const obstacles = [];
     function createObstacle() {
-      const obsGeo = new THREE.BoxGeometry(Math.random() * 2 + 1, Math.random() * 1 + 1, 0.5);
-      const obsMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      const obs = new THREE.Mesh(obsGeo, obsMat);
-      obs.position.set(Math.random() * 10 - 5, -10, 0);
-      scene.add(obs);
-      obstacles.push(obs);
+      const obstacleGeo = new THREE.BoxGeometry(Math.random() * 2 + 1, 1, 1);
+      const obstacleMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const obstacle = new THREE.Mesh(obstacleGeo, obstacleMat);
+      obstacle.position.set(Math.random() * 6 - 3, 0.5, Math.random() * -50 - 10);
+      scene.add(obstacle);
+      obstacles.push(obstacle);
     }
 
     for (let i = 0; i < 5; i++) createObstacle();
@@ -43,25 +64,42 @@
 
     window.addEventListener('touchstart', e => {
       touchStart.x = e.touches[0].clientX;
-      touchStart.y = e.touches[0].clientY;
     });
 
     window.addEventListener('touchmove', e => {
       const diffX = e.touches[0].clientX - touchStart.x;
-      if (e.touches[0].clientX > touchStart.x) car.rotation.y += 0.02;
-      if (e.touches[0].clientX < touchStart.x) car.rotation.y -= 0.02;
+      if (e.touches[0].clientX > touchStart.x) car.rotation.y += 0.05;
+      if (e.touches[0].clientX < touchStart.x) car.rotation.y -= 0.05;
       touchStart.x = e.touches[0].clientX;
     });
 
+    let win = false;
     function animate() {
       requestAnimationFrame(animate);
       car.position.x += carVelocity * Math.sin(car.rotation.y);
       car.position.z -= carVelocity * Math.cos(car.rotation.y);
 
+      // Update obstacles
       obstacles.forEach(obs => {
-        obs.position.z += 0.05;
-        if (obs.position.z > 5) obs.position.z = -5;
+        obs.position.z += 0.2;
+        if (obs.position.z > 5) {
+          obs.position.z = -50;
+          obs.position.x = Math.random() * 6 - 3;
+        }
       });
+
+      // Camera follows the car
+      camera.position.x = car.position.x;
+      camera.position.z = car.position.z + 10;
+      camera.lookAt(car.position);
+
+      // Win condition
+      if (car.position.z < finishLine.position.z) {
+        if (!win) {
+          alert('You win!');
+          win = true;
+        }
+      }
 
       renderer.render(scene, camera);
     }
