@@ -1,1 +1,64 @@
-
+<!DOCTYPE html>
+<style>
+canvas{touch-action:none;background:#000;width:100vw;height:100vh;cursor:move}
+</style>
+<canvas id="s"></canvas>
+<script>
+let c=document.getElementById('s'),x=c.getContext('2d'),p={x:0,y:0},d={x:0,y:0},z=1,
+planets=[
+{n:"Sun",r:30,d:0,s:0,c:"#FDB813"},
+{n:"Mercury",r:5,d:50,s:4.1,c:"#C0C0C0"},
+{n:"Venus",r:8,d:80,s:1.6,c:"#FFC649"},
+{n:"Earth",r:9,d:110,s:1,c:"#4B87FF"},
+{n:"Mars",r:6,d:140,s:0.53,c:"#FF6B46"},
+{n:"Jupiter",r:20,d:200,s:0.084,c:"#E8B57A"},
+{n:"Saturn",r:17,d:250,s:0.034,c:"#F7D28B"},
+{n:"Uranus",r:12,d:290,s:0.012,c:"#B5E3E0"},
+{n:"Neptune",r:11,d:330,s:0.006,c:"#4B70DD"}
+];
+function resize(){c.width=window.innerWidth;c.height=window.innerHeight}
+resize();window.onresize=resize;
+function draw(){
+x.setTransform(1,0,0,1,0,0);
+x.clearRect(0,0,c.width,c.height);
+x.translate(c.width/2+p.x,c.height/2+p.y);
+x.scale(z,z);
+let t=performance.now()/1000;
+planets.forEach(p=>{
+let a=t*p.s,px=Math.cos(a)*p.d,py=Math.sin(a)*p.d;
+x.beginPath();
+x.arc(px,py,p.r,0,2*Math.PI);
+x.fillStyle=p.c;
+x.fill();
+if(p.d){
+x.beginPath();
+x.arc(0,0,p.d,0,2*Math.PI);
+x.strokeStyle="#222";
+x.stroke()
+}
+})
+requestAnimationFrame(draw)
+}
+draw();
+let md=false,lx=0,ly=0;
+c.onmousedown=c.ontouchstart=e=>{
+md=true;
+lx=e.touches?e.touches[0].clientX:e.clientX;
+ly=e.touches?e.touches[0].clientY:e.clientY
+};
+c.onmouseup=c.ontouchend=()=>md=false;
+c.onmousemove=c.ontouchmove=e=>{
+if(!md)return;
+let cx=e.touches?e.touches[0].clientX:e.clientX,
+cy=e.touches?e.touches[0].clientY:e.clientY;
+p.x+=cx-lx;
+p.y+=cy-ly;
+lx=cx;
+ly=cy;
+e.preventDefault()
+};
+c.onwheel=e=>{
+z=Math.max(.1,Math.min(5,z*(1-e.deltaY*.001)));
+e.preventDefault()
+}
+</script>
