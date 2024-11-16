@@ -3,7 +3,7 @@ let currentPage = 1;
 
 const games = [
     "jump.html",
-    "baloon.html"
+    "balloon.html"
 ];
 
 function displayGames() {
