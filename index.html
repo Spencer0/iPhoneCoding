@@ -103,6 +103,36 @@
             word-break: break-all;
         }
 
+        .error-container {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem;
+            color: #fff;
+        }
+
+        .error-title {
+            color: #ff6b6b;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-details {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+
+        .debug-info {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+        }
+
         @media (max-width: 600px) {
             .games-grid {
                 grid-template-columns: 1fr;
@@ -115,6 +145,10 @@
             
             h1 {
                 font-size: 2rem;
+            }
+
+            .error-container {
+                margin: 1rem;
             }
         }
 
@@ -138,11 +172,40 @@
     </div>
 
     <script>
+        async function displayError(error, additionalInfo = {}) {
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'error-container';
+            
+            const errorHTML = `
+                <div class="error-title">⚠️ Error Loading Games</div>
+                <div>Error Message: ${error.message}</div>
+                <div class="error-details">${error.stack || 'No stack trace available'}</div>
+                <div class="debug-info">
+                    <strong>Debug Information:</strong><br>
+                    Current Path: ${window.location.pathname}<br>
+                    Full URL: ${window.location.href}<br>
+                    ${Object.entries(additionalInfo).map(([key, value]) => 
+                        `${key}: ${value}`
+                    ).join('<br>')}
+                </div>
+            `;
+            
+            errorContainer.innerHTML = errorHTML;
+            document.getElementById('gamesGrid').appendChild(errorContainer);
+        }
+
         async function loadGames() {
             try {
-                const response = await fetch('games/');
-                if (!response.ok) throw new Error('Failed to load games directory');
+                console.log('Attempting to fetch games directory...');
+                const response = await fetch('/games/');
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load games directory (HTTP ${response.status})`);
+                }
+                
                 const text = await response.text();
+                console.log('Directory content received, length:', text.length);
                 
                 // Create a temporary element to parse the directory listing
                 const tempDiv = document.createElement('div');
@@ -150,24 +213,39 @@
                 
                 // Extract links from the directory listing
                 const links = Array.from(tempDiv.getElementsByTagName('a'));
+                console.log('Found links:', links.length);
+                
                 const games = links
-                    .map(link => link.href)
-                    .filter(href => href.match(/\.(html|htm)$/i))
+                    .map(link => {
+                        console.log('Processing link:', link.href);
+                        return link.href;
+                    })
+                    .filter(href => {
+                        const isGame = href.match(/\.(html|htm)$/i);
+                        console.log('Checking if game:', href, isGame);
+                        return isGame;
+                    })
                     .map(href => ({
                         path: href,
                         name: href.split('/').pop().replace(/\.(html|htm)$/i, '').replace(/-/g, ' ')
                     }));
 
+                console.log('Processed games:', games);
+
+                if (games.length === 0) {
+                    throw new Error('No games found in directory. Make sure your HTML games are in the /games folder.');
+                }
+
                 displayGames(games);
                 setupSearch(games);
             } catch (error) {
                 console.error('Error loading games:', error);
-                document.getElementById('gamesGrid').innerHTML = `
-                    <div class="no-games">
-                        <h2>Error loading games 😢</h2>
-                        <p>Please make sure the games directory exists and is accessible.</p>
-                    </div>
-                `;
+                const additionalInfo = {
+                    'User Agent': navigator.userAgent,
+                    'Window Inner Size': `${window.innerWidth}x${window.innerHeight}`,
+                    'Timestamp': new Date().toISOString()
+                };
+                displayError(error, additionalInfo);
             }
         }
 
