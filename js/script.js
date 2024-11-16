@@ -2,7 +2,8 @@ const gamesPerPage = 5; // Adjust the number of games per page
 let currentPage = 1;
 
 const games = [
-    "jump.html"
+    "jump.html",
+    "baloon.html"
 ];
 
 function displayGames() {
