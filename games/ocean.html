@@ -1,12 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{margin:0;overflow:hidden;touch-action:none}canvas{display:block}</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacific Ocean Simulation</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        #ocean { width: 100%; height: 100%; background: #00f; position: relative; }
+        .control-btn { position: absolute; bottom: 10px; background: rgba(255, 255, 255, 0.7); border: none; padding: 10px; }
+        #play { left: 10px; }
+        #rewind { left: 60px; }
+        #fast-forward { left: 110px; }
+    </style>
 </head>
 <body>
-<canvas></canvas>
-<script>
-let c=canvas,w=c.width=innerWidth,h=c.height=innerHeight,x=c.getContext('2d'),t=0,s=!1,m=0,v=[],f=(n,a,b)=>Math.random()*(b-a)+a,p=()=>{x.fillStyle='rgba(0,50,150,.3)';x.fillRect(0,0,w,h);for(i=0;i<200;i++){x.beginPath();x.arc(v[i].x+=v[i].u,v[i].y+=v[i].v,v[i].r,0,7);x.fillStyle=`rgba(255,255,255,${f(0,.5,.8)})`;x.fill();v[i].x>w&&(v[i].x=0);v[i].y>h&&(v[i].y=0)}};while(v.length<200)v.push({x:f(0,0,w),y:f(0,0,h),u:f(0,-.5,.5),v:f(0,-.5,.5),r:f(0,1,3)});c.ontouchstart=e=>{m=(m+1)%3},setInterval(()=>{t+=(s?4:-1);p()},33);</script>
+    <div id="ocean">
+        <button id="play" class="control-btn">Play</button>
+        <button id="rewind" class="control-btn">Rewind</button>
+        <button id="fast-forward" class="control-btn">Fast Forward</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.1.3/pixi.min.js"></script>
+    <script>
+        let app = new PIXI.Application({ view: document.getElementById('ocean'), autoResize: true, backgroundColor: 0x87CEEB });
+        window.addEventListener('resize', () => { app.renderer.resize(window.innerWidth, window.innerHeight); });
+
+        let boatTexture = PIXI.Texture.from('https://example.com/boat.png');  // Replace with your boat image URL
+        let boat = new PIXI.Sprite(boatTexture);
+        boat.anchor.set(0.5);
+        boat.x = app.renderer.width / 2;
+        boat.y = app.renderer.height / 2;
+        app.stage.addChild(boat);
+
+        let cloudsTexture = PIXI.Texture.from('https://example.com/clouds.png');  // Replace with your clouds image URL
+        let clouds = new PIXI.TilingSprite(cloudsTexture, app.renderer.width, 200);
+        clouds.y = 50;
+        app.stage.addChild(clouds);
+
+        let isPlaying = false, speed = 1;
+        function animate() {
+            if (isPlaying) {
+                boat.x += 1 * speed;
+                if (boat.x > app.renderer.width) boat.x = 0;
+                clouds.tilePosition.x -= 0.5 * speed;
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        document.getElementById('play').onclick = () => isPlaying = !isPlaying;
+        document.getElementById('rewind').onclick = () => speed = Math.max(-2, speed - 1);
+        document.getElementById('fast-forward').onclick = () => speed = Math.min(5, speed + 1);
+    </script>
 </body>
 </html>
