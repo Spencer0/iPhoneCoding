@@ -97,40 +97,15 @@
             color: #fff;
         }
 
-        .game-path {
+        .game-description {
             font-size: 0.9rem;
             color: rgba(255,255,255,0.6);
-            word-break: break-all;
+            margin-bottom: 0.5rem;
         }
 
-        .error-container {
-            background: rgba(255, 0, 0, 0.1);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 2rem;
-            color: #fff;
-        }
-
-        .error-title {
-            color: #ff6b6b;
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-        }
-
-        .error-details {
-            font-family: monospace;
-            white-space: pre-wrap;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 1rem;
-            border-radius: 5px;
-            margin-top: 1rem;
-        }
-
-        .debug-info {
-            margin-top: 1rem;
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.7);
+        .game-meta {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.4);
         }
 
         @media (max-width: 600px) {
@@ -145,10 +120,6 @@
             
             h1 {
                 font-size: 2rem;
-            }
-
-            .error-container {
-                margin: 1rem;
             }
         }
 
@@ -172,82 +143,24 @@
     </div>
 
     <script>
-        async function displayError(error, additionalInfo = {}) {
-            const errorContainer = document.createElement('div');
-            errorContainer.className = 'error-container';
-            
-            const errorHTML = `
-                <div class="error-title">⚠️ Error Loading Games</div>
-                <div>Error Message: ${error.message}</div>
-                <div class="error-details">${error.stack || 'No stack trace available'}</div>
-                <div class="debug-info">
-                    <strong>Debug Information:</strong><br>
-                    Current Path: ${window.location.pathname}<br>
-                    Full URL: ${window.location.href}<br>
-                    ${Object.entries(additionalInfo).map(([key, value]) => 
-                        `${key}: ${value}`
-                    ).join('<br>')}
-                </div>
-            `;
-            
-            errorContainer.innerHTML = errorHTML;
-            document.getElementById('gamesGrid').appendChild(errorContainer);
-        }
-
-        async function loadGames() {
-            try {
-                console.log('Attempting to fetch games directory...');
-                const response = await fetch('/games/');
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to load games directory (HTTP ${response.status})`);
-                }
-                
-                const text = await response.text();
-                console.log('Directory content received, length:', text.length);
-                
-                // Create a temporary element to parse the directory listing
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = text;
-                
-                // Extract links from the directory listing
-                const links = Array.from(tempDiv.getElementsByTagName('a'));
-                console.log('Found links:', links.length);
-                
-                const games = links
-                    .map(link => {
-                        console.log('Processing link:', link.href);
-                        return link.href;
-                    })
-                    .filter(href => {
-                        const isGame = href.match(/\.(html|htm)$/i);
-                        console.log('Checking if game:', href, isGame);
-                        return isGame;
-                    })
-                    .map(href => ({
-                        path: href,
-                        name: href.split('/').pop().replace(/\.(html|htm)$/i, '').replace(/-/g, ' ')
-                    }));
-
-                console.log('Processed games:', games);
-
-                if (games.length === 0) {
-                    throw new Error('No games found in directory. Make sure your HTML games are in the /games folder.');
-                }
-
-                displayGames(games);
-                setupSearch(games);
-            } catch (error) {
-                console.error('Error loading games:', error);
-                const additionalInfo = {
-                    'User Agent': navigator.userAgent,
-                    'Window Inner Size': `${window.innerWidth}x${window.innerHeight}`,
-                    'Timestamp': new Date().toISOString()
-                };
-                displayError(error, additionalInfo);
+        // Define your games here
+        const GAMES = [
+            {
+                title: 'Snake',
+                path: 'games/snake.html',
+                description: 'Classic snake game. Eat food, grow longer, avoid walls!',
+                emoji: '🐍',
+                tags: ['arcade', 'classic']
             }
-        }
+            // Add more games here as you create them, for example:
+            // {
+            //     title: 'Pong',
+            //     path: 'games/pong.html',
+            //     description: 'Classic table tennis game',
+            //     emoji: '🏓',
+            //     tags: ['sports', 'classic']
+            // }
+        ];
 
         function displayGames(games) {
             const gamesGrid = document.getElementById('gamesGrid');
@@ -256,7 +169,7 @@
                 gamesGrid.innerHTML = `
                     <div class="no-games">
                         <h2>No games found</h2>
-                        <p>Add some HTML games to your /games directory to get started!</p>
+                        <p>No games match your search criteria.</p>
                     </div>
                 `;
                 return;
@@ -264,10 +177,11 @@
 
             gamesGrid.innerHTML = games.map(game => `
                 <div class="game-card" onclick="window.location.href='${game.path}'">
-                    <div class="game-thumbnail">🎮</div>
+                    <div class="game-thumbnail">${game.emoji}</div>
                     <div class="game-info">
-                        <h3 class="game-title">${capitalizeWords(game.name)}</h3>
-                        <div class="game-path">${game.path}</div>
+                        <h3 class="game-title">${game.title}</h3>
+                        <div class="game-description">${game.description}</div>
+                        <div class="game-meta">${game.tags.join(' • ')}</div>
                     </div>
                 </div>
             `).join('');
@@ -278,18 +192,19 @@
             searchInput.addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase();
                 const filteredGames = allGames.filter(game => 
-                    game.name.toLowerCase().includes(searchTerm)
+                    game.title.toLowerCase().includes(searchTerm) ||
+                    game.description.toLowerCase().includes(searchTerm) ||
+                    game.tags.some(tag => tag.toLowerCase().includes(searchTerm))
                 );
                 displayGames(filteredGames);
             });
         }
 
-        function capitalizeWords(str) {
-            return str.replace(/\b\w/g, letter => letter.toUpperCase());
-        }
-
-        // Load games when the page loads
-        window.addEventListener('load', loadGames);
+        // Initialize the page
+        window.addEventListener('load', () => {
+            displayGames(GAMES);
+            setupSearch(GAMES);
+        });
     </script>
 </body>
 </html>
