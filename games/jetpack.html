@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jetpack Joyride Clone</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #1e3c72, #2a5298);
+    }
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/browser/pixi.min.js"></script>
+  <script>
+    // Set up PIXI app
+    const app = new PIXI.Application({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      backgroundColor: 0x1e3c72,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true
+    });
+    document.body.appendChild(app.view);
+
+    // Global Variables
+    const playerSpeed = 5;
+    const gravity = 0.5;
+    const jetpackPower = -10;
+    const obstacleSpeed = 5;
+    const obstacleSpacing = 300;
+    let isPlaying = true;
+
+    // Game Container
+    const gameContainer = new PIXI.Container();
+    app.stage.addChild(gameContainer);
+
+    // Load assets
+    const loader = PIXI.Loader.shared;
+    loader
+      .add("player", "https://i.imgur.com/UM7tRb3.png") // Jetpack character
+      .add("obstacle", "https://i.imgur.com/5sHccEC.png") // Obstacle
+      .load(setup);
+
+    // Game Objects
+    let player, playerVelocity, obstacles, score, scoreText;
+
+    function setup() {
+      // Create Player
+      player = new PIXI.Sprite(loader.resources["player"].texture);
+      player.anchor.set(0.5);
+      player.width = 50;
+      player.height = 50;
+      player.x = 100;
+      player.y = app.view.height / 2;
+      gameContainer.addChild(player);
+
+      // Initialize Variables
+      playerVelocity = 0;
+      obstacles = [];
+      score = 0;
+
+      // Create Score Text
+      scoreText = new PIXI.Text(`Score: ${score}`, {
+        fill: "#fff",
+        fontSize: 24
+      });
+      scoreText.anchor.set(0.5, 0);
+      scoreText.x = app.view.width / 2;
+      scoreText.y = 10;
+      gameContainer.addChild(scoreText);
+
+      // Start game loop
+      app.ticker.add(update);
+
+      // Event Listeners
+      window.addEventListener("pointerdown", activateJetpack);
+      window.addEventListener("pointerup", deactivateJetpack);
+
+      // Spawn obstacles
+      spawnObstacle();
+    }
+
+    function activateJetpack() {
+      playerVelocity = jetpackPower;
+    }
+
+    function deactivateJetpack() {
+      playerVelocity = gravity;
+    }
+
+    function spawnObstacle() {
+      const obstacle = new PIXI.Sprite(loader.resources["obstacle"].texture);
+      obstacle.anchor.set(0.5);
+      obstacle.width = 50;
+      obstacle.height = 50;
+      obstacle.x = app.view.width;
+      obstacle.y = Math.random() * app.view.height;
+      gameContainer.addChild(obstacle);
+      obstacles.push(obstacle);
+
+      // Schedule next obstacle
+      if (isPlaying) {
+        setTimeout(spawnObstacle, obstacleSpacing);
+      }
+    }
+
+    function update(delta) {
+      if (!isPlaying) return;
+
+      // Update player position
+      playerVelocity += gravity;
+      player.y += playerVelocity * delta;
+
+      // Keep player within bounds
+      if (player.y < 0) player.y = 0;
+      if (player.y > app.view.height) {
+        endGame();
+        return;
+      }
+
+      // Update obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        obstacle.x -= obstacleSpeed * delta;
+
+        // Check collision
+        if (hitTestRectangle(player, obstacle)) {
+          endGame();
+          return;
+        }
+
+        // Remove off-screen obstacles
+        if (obstacle.x < -obstacle.width) {
+          gameContainer.removeChild(obstacle);
+          obstacles.splice(i, 1);
+          score++;
+          scoreText.text = `Score: ${score}`;
+        }
+      }
+    }
+
+    function hitTestRectangle(r1, r2) {
+      const r1Bounds = r1.getBounds();
+      const r2Bounds = r2.getBounds();
+      return (
+        r1Bounds.x + r1Bounds.width > r2Bounds.x &&
+        r1Bounds.x < r2Bounds.x + r2Bounds.width &&
+        r1Bounds.y + r1Bounds.height > r2Bounds.y &&
+        r1Bounds.y < r2Bounds.y + r2Bounds.height
+      );
+    }
+
+    function endGame() {
+      isPlaying = false;
+      scoreText.text = `Game Over! Final Score: ${score}`;
+      app.ticker.stop();
+    }
+
+    // Resize handling
+    window.addEventListener("resize", () => {
+      app.renderer.resize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
