@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mini Pokemon</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #333; touch-action: none; }
+        #game { position: relative; width: 100vw; height: 100vh; }
+        .sprite { position: absolute; image-rendering: pixelated; transition: left 0.2s, top 0.2s; }
+        #controls { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .ctrl-btn { width: 50px; height: 50px; margin: 5px; font-size: 20px; background: rgba(255,255,255,0.7); border: none; border-radius: 25px; }
+        #dialog { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: white; padding: 10px; border-radius: 5px; display: none; }
+        #battle { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; color: white; }
+        .battle-btn { padding: 10px; margin: 5px; }
+        #inventory { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.8); padding: 5px; }
+    </style>
+</head>
+<body>
+<div id="game">
+    <div id="player" class="sprite">😀</div>
+    <div id="npc" class="sprite">🧑</div>
+    <div id="pokemon" class="sprite">🐲</div>
+</div>
+<div id="controls">
+    <button class="ctrl-btn" onclick="move('up')">⬆️</button><br>
+    <button class="ctrl-btn" onclick="move('left')">⬅️</button>
+    <button class="ctrl-btn" onclick="move('down')">⬇️</button>
+    <button class="ctrl-btn" onclick="move('right')">➡️</button>
+</div>
+<div id="dialog"></div>
+<div id="battle">
+    <div style="padding: 20px; text-align: center;">
+        <h2>Battle!</h2>
+        <div id="battle-text"></div>
+        <div id="battle-controls">
+            <button class="battle-btn" onclick="attack()">Attack</button>
+            <button class="battle-btn" onclick="throwPokeball()">Throw Pokeball</button>
+            <button class="battle-btn" onclick="run()">Run</button>
+        </div>
+    </div>
+</div>
+<div id="inventory">
+    Pokeballs: <span id="pokeballs">5</span><br>
+    Caught: <span id="caught">0</span>
+</div>
+
+<script>
+const state = {
+    player: { x: 50, y: 50, hp: 100 },
+    pokemon: { x: 200, y: 200, hp: 50, wild: true },
+    npc: { x: 150, y: 150 },
+    gameSize: { width: window.innerWidth, height: window.innerHeight },
+    inBattle: false,
+    pokeballs: 5,
+    caught: 0,
+    audio: {
+        battle: new Howl({ src: ['data:audio/wav;base64,UklGRj4BAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTQBAAB/AH0AgQB9AIIAfwB7AH4AfQB/AIEAfgB8AH8AfwB+AH8AfgB9AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AA=='], volume: 0.3 }),
+        catch: new Howl({ src: ['data:audio/wav;base64,UklGRkIBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTQBAAB/AH0AgQB9AIIAfwB7AH4AfQB/AIEAfgB8AH8AfwB+AH8AfgB9AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AH8AfwB+AH4AfgB+AA=='], volume: 0.3 })
+    }
+};
+
+function updateSprite(id, x, y) {
+    const sprite = document.getElementById(id);
+    sprite.style.left = x + 'px';
+    sprite.style.top = y + 'px';
+}
+
+function move(direction) {
+    if (state.inBattle) return;
+    
+    const step = 20;
+    const oldX = state.player.x;
+    const oldY = state.player.y;
+    
+    switch(direction) {
+        case 'up': state.player.y = Math.max(0, state.player.y - step); break;
+        case 'down': state.player.y = Math.min(state.gameSize.height - 50, state.player.y + step); break;
+        case 'left': state.player.x = Math.max(0, state.player.x - step); break;
+        case 'right': state.player.x = Math.min(state.gameSize.width - 50, state.player.x + step); break;
+    }
+    
+    updateSprite('player', state.player.x, state.player.y);
+    checkCollisions();
+}
+
+function checkCollisions() {
+    const dist = (x1, y1, x2, y2) => Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    
+    // NPC interaction
+    if (dist(state.player.x, state.player.y, state.npc.x, state.npc.y) < 50) {
+        showDialog("Hi trainer! Watch out for wild Pokemon!");
+    }
+    
+    // Pokemon encounter
+    if (state.pokemon.wild && dist(state.player.x, state.player.y, state.pokemon.x, state.pokemon.y) < 50) {
+        startBattle();
+    }
+}
+
+function showDialog(text) {
+    const dialog = document.getElementById('dialog');
+    dialog.textContent = text;
+    dialog.style.display = 'block';
+    setTimeout(() => dialog.style.display = 'none', 2000);
+}
+
+function startBattle() {
+    state.inBattle = true;
+    state.audio.battle.play();
+    document.getElementById('battle').style.display = 'block';
+    updateBattleText("A wild Pokemon appeared!");
+}
+
+function updateBattleText(text) {
+    document.getElementById('battle-text').textContent = text;
+}
+
+function attack() {
+    if (!state.inBattle) return;
+    state.pokemon.hp -= 10;
+    if (state.pokemon.hp <= 0) {
+        endBattle("Pokemon fainted!");
+        return;
+    }
+    updateBattleText(`You attacked! Pokemon HP: ${state.pokemon.hp}`);
+}
+
+function throwPokeball() {
+    if (!state.inBattle || state.pokeballs <= 0) return;
+    state.pokeballs--;
+    document.getElementById('pokeballs').textContent = state.pokeballs;
+    
+    if (state.pokemon.hp < 20) {
+        state.caught++;
+        document.getElementById('caught').textContent = state.caught;
+        state.audio.catch.play();
+        endBattle("Gotcha! Pokemon caught!");
+        state.pokemon.wild = false;
+    } else {
+        updateBattleText("Pokemon broke free! Weaken it more!");
+    }
+}
+
+function run() {
+    if (Math.random() > 0.5) {
+        endBattle("Got away safely!");
+    } else {
+        updateBattleText("Couldn't escape!");
+    }
+}
+
+function endBattle(message) {
+    updateBattleText(message);
+    setTimeout(() => {
+        state.inBattle = false;
+        document.getElementById('battle').style.display = 'none';
+        state.pokemon.x = Math.random() * (state.gameSize.width - 50);
+        state.pokemon.y = Math.random() * (state.gameSize.height - 50);
+        state.pokemon.hp = 50;
+        updateSprite('pokemon', state.pokemon.x, state.pokemon.y);
+    }, 1500);
+}
+
+// Initialize sprites
+updateSprite('player', state.player.x, state.player.y);
+updateSprite('npc', state.npc.x, state.npc.y);
+updateSprite('pokemon', state.pokemon.x, state.pokemon.y);
+
+// Handle touch events for mobile
+document.addEventListener('touchstart', (e) => e.preventDefault());
+</script>
+</body>
+</html>
